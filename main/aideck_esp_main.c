@@ -63,30 +63,39 @@
 #define RCSOFTCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){printf("Failed status on line %d: %d. Continuing.\n",__LINE__,(int)temp_rc);}}
 
 rcl_publisher_t publisher;
-std_msgs__msg__Int32 msg;
+rcl_subscription_t subscriber;
+std_msgs__msg__Int32 send_msg;
+std_msgs__msg__Int32 recv_msg;
 
 void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
 {
 	RCLC_UNUSED(last_call_time);
 	if (timer != NULL) {
-		printf("Publishing: %d\n", msg.data);
-		RCSOFTCHECK(rcl_publish(&publisher, &msg, NULL));
-		msg.data++;
+		printf("Publishing: %d\n", send_msg.data);
+		RCSOFTCHECK(rcl_publish(&publisher, &send_msg, NULL));
+		send_msg.data++;
 	}
+}
+
+void subscription_callback(const void * msgin)
+{
+	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
+	// printf("Received: %d\n", msg->data);
+    ESP_LOGI("ROS", "Message received");
 }
 
 void micro_ros_task(void * arg)
 {
-    // ESP_LOGI("SYS", "uROS task started");
+    // ESP_LOGI("ROS", "uROS task started");
 	rcl_allocator_t allocator = rcl_get_default_allocator();
 	rclc_support_t support;
-    // ESP_LOGI("SYS", "uROS checkpoint 0");
+    // ESP_LOGI("ROS", "uROS checkpoint 0");
 
     vTaskDelay(1000);
     
 	rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
 	RCCHECK(rcl_init_options_init(&init_options, allocator));
-    // ESP_LOGI("SYS", "uROS checkpoint 1");
+    // ESP_LOGI("ROS", "uROS checkpoint 1");
 
 #ifdef CONFIG_MICRO_ROS_ESP_XRCE_DDS_MIDDLEWARE
 	rmw_init_options_t* rmw_options = rcl_init_options_get_rmw_init_options(&init_options);
@@ -95,17 +104,17 @@ void micro_ros_task(void * arg)
 	RCCHECK(rmw_uros_options_set_udp_address(CONFIG_MICRO_ROS_AGENT_IP, CONFIG_MICRO_ROS_AGENT_PORT, rmw_options));
 	// RCCHECK(rmw_uros_discover_agent(rmw_options));
 #endif
-    // ESP_LOGI("SYS", "uROS checkpoint 2");
+    // ESP_LOGI("ROS", "uROS checkpoint 2");
 
 	// create init_options
 	RCCHECK(rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator));
     // rclc_support_init_with_options(&support, 0, NULL, &init_options, &allocator);
-    // ESP_LOGI("SYS", "uROS checkpoint 3");
+    // ESP_LOGI("ROS", "uROS checkpoint 3");
 
 	// create node
 	rcl_node_t node;
 	RCCHECK(rclc_node_init_default(&node, "esp32_int32_publisher", "", &support));
-    // ESP_LOGI("SYS", "uROS checkpoint 4");
+    // ESP_LOGI("ROS", "uROS checkpoint 4");
 
 	// create publisher
 	RCCHECK(rclc_publisher_init_default(
@@ -114,7 +123,14 @@ void micro_ros_task(void * arg)
 		ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
 		"freertos_int32_publisher")
     );
-    // ESP_LOGI("SYS", "uROS checkpoint 4");
+    // ESP_LOGI("ROS", "uROS checkpoint 4");
+
+    RCCHECK(rclc_subscription_init_default(
+		&subscriber,
+		&node,
+		ROSIDL_GET_MSG_TYPE_SUPPORT(std_msgs, msg, Int32),
+		"int32_subscriber")
+    );
 
 	// create timer,
 	rcl_timer_t timer;
@@ -125,16 +141,17 @@ void micro_ros_task(void * arg)
 		RCL_MS_TO_NS(timer_timeout),
 		timer_callback)
     );
-    // ESP_LOGI("SYS", "uROS checkpoint 5");
+    // ESP_LOGI("ROS", "uROS checkpoint 5");
 
 	// create executor
 	rclc_executor_t executor;
-	RCCHECK(rclc_executor_init(&executor, &support.context, 1, &allocator));
+	RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
 	RCCHECK(rclc_executor_add_timer(&executor, &timer));
-    // ESP_LOGI("SYS", "uROS checkpoint 6");
+    RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &recv_msg, &subscription_callback, ON_NEW_DATA));
+    // ESP_LOGI("ROS", "uROS checkpoint 6");
 
-	msg.data = 0;
-    ESP_LOGI("SYS", "uROS task init done");
+	send_msg.data = 0;
+    // ESP_LOGI("ROS", "uROS checkpoint 7");
 
 	while(1){
 		rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
@@ -143,6 +160,7 @@ void micro_ros_task(void * arg)
 
 	// free resources
 	RCCHECK(rcl_publisher_fini(&publisher, &node));
+    RCCHECK(rcl_subscription_fini(&subscriber, &node));
 	RCCHECK(rcl_node_fini(&node));
 
   	vTaskDelete(NULL);
@@ -179,6 +197,7 @@ void app_main(void)
     esp_log_level_set("COM", ESP_LOG_INFO);
     esp_log_level_set("TEST", ESP_LOG_INFO);
     esp_log_level_set("WIFI", ESP_LOG_INFO);
+    esp_log_level_set("ROS", ESP_LOG_INFO);
 
     ESP_ERROR_CHECK(nvs_flash_init());
     ESP_ERROR_CHECK(esp_event_loop_create_default());
@@ -233,7 +252,7 @@ void app_main(void)
         NULL
     );
 
-    ESP_LOGI("SYS", "uROS task created");
+    ESP_LOGI("ROS", "Task created");
 
     while(1) {
         vTaskDelay(10);
