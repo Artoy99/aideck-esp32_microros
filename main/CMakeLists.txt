@@ -11,4 +11,5 @@ idf_component_register(SRCS "wifi.c"
                             "cpx.c"
                             "system.c"
                             "discovery.c"
+                            "uros.c"
                         INCLUDE_DIRS "")

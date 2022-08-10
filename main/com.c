@@ -71,6 +71,9 @@ static void com_rx(void* _param) {
       case CPX_F_SYSTEM:
         xQueueSend(espSystemQueue, &rxp, (TickType_t) portMAX_DELAY);
         break;
+      // case CPX_F_APP:
+      //   // ESP_LOGI("COM", "New image");
+      //   break;
       default:
         ESP_LOGW("COM", "Cannot handle 0x%02X", rxp.route.function);
     }

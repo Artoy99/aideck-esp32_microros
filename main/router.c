@@ -114,6 +114,12 @@ static void route(Receiver_t receive, CPXRoutablePacket_t* rxp, RouteContext_t* 
       case CPX_T_WIFI_HOST:
         ESP_LOGD("ROUTER", "%s [0x%02X] -> HOST [0x%02X] (%u)", routerName, source, destination, cpxDataLength);
         splitAndSend(rxp, context, wifi_transport_send, WIFI_TRANSPORT_MTU - CPX_ROUTING_PACKED_SIZE);
+
+        // if(destination == CPX_T_WIFI_HOST)
+        // {
+        //   // ESP_LOGI("ROUTER", "New data to computer");
+        //   splitAndSend(rxp, context, espTransportSend, ESP_TRANSPORT_MTU - CPX_ROUTING_PACKED_SIZE);
+        // }
         break;
       default:
         ESP_LOGW("ROUTER", "Cannot route from %s [0x%02X] to [0x%02X]", routerName, source, destination);
