@@ -15,6 +15,21 @@ void subscription_callback(const void * msgin)
 	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
 	// printf("Received: %d\n", msg->data);
     ESP_LOGI("ROS", "Message received: %d", msg->data);
+    if(msg->data)
+    {
+        // Send connection info to GAP8
+        // const CPXRoutingPacked_t* packed;
+
+        // CPXRouting_t* route;
+        // route->source = CPX_T_ESP32;
+        // route->destination = CPX_T_GAP8;
+        // route->function = CPX_F_WIFI_CTRL;
+        // route->lastPacket = false;
+
+        // cpxPackedToRoute(packed, route)
+    }else{
+        // Send deconnection info to GAP8
+    }
 }
 
 void micro_ros_task(void * arg)
@@ -116,10 +131,28 @@ void micro_ros_task(void * arg)
   	vTaskDelete(NULL);
 }
 
+void micro_image_task()
+{
+    while(1)
+    {
+        vTaskDelay(100);
+        com_receive_image_blocking(&packet);
+        ESP_LOGI("ROS", "%d", packet.data[0]);
+    }
+}
+
 void uros_init()
 {
     xTaskCreate(micro_ros_task,
         "uros_task",
+        CONFIG_MICRO_ROS_APP_STACK,
+        NULL,
+        CONFIG_MICRO_ROS_APP_TASK_PRIO,
+        NULL
+    );
+
+    xTaskCreate(micro_image_task,
+        "uros_image_task",
         CONFIG_MICRO_ROS_APP_STACK,
         NULL,
         CONFIG_MICRO_ROS_APP_TASK_PRIO,

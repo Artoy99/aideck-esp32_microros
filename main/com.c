@@ -44,10 +44,15 @@
 #define ESP_SYS_QUEUE_SIZE (sizeof(esp_routable_packet_t))
 #define ESP_TEST_QUEUE_LENGTH (2)
 #define ESP_TEST_QUEUE_SIZE (sizeof(esp_routable_packet_t))
+#define ESP_IMAGE_QUEUE_LENGTH (3)
+#define ESP_IMAGE_QUEUE_SIZE (sizeof(esp_routable_packet_t))
 
 static xQueueHandle espWiFiCTRLQueue;
 static xQueueHandle espSystemQueue;
 static xQueueHandle espTESTQueue;
+static xQueueHandle espImageQueue;
+
+esp_routable_packet_t packet;
 
 static esp_routable_packet_t rxp;
 
@@ -71,9 +76,12 @@ static void com_rx(void* _param) {
       case CPX_F_SYSTEM:
         xQueueSend(espSystemQueue, &rxp, (TickType_t) portMAX_DELAY);
         break;
-      // case CPX_F_APP:
-      //   // ESP_LOGI("COM", "New image");
-      //   break;
+      case CPX_F_APP:
+        // ESP_LOGI("COM", "New image");
+        xQueueSend(espImageQueue, &rxp, (TickType_t) portMAX_DELAY);
+        // ESP_LOGI("COM", "In the Q");
+        // com_receive_image_blocking(&packet);
+        break;
       default:
         ESP_LOGW("COM", "Cannot handle 0x%02X", rxp.route.function);
     }
@@ -84,6 +92,7 @@ void com_init() {
   espWiFiCTRLQueue = xQueueCreate(ESP_WIFI_CTRL_QUEUE_LENGTH, ESP_WIFI_CTRL_QUEUE_SIZE);
   espSystemQueue = xQueueCreate(ESP_SYS_QUEUE_LENGTH, ESP_SYS_QUEUE_SIZE);
   espTESTQueue = xQueueCreate(ESP_TEST_QUEUE_LENGTH, ESP_TEST_QUEUE_SIZE);
+  espImageQueue = xQueueCreate(ESP_IMAGE_QUEUE_LENGTH, ESP_IMAGE_QUEUE_SIZE);
 
   startUpEventGroup = xEventGroupCreate();
   xEventGroupClearBits(startUpEventGroup, START_UP_RX_TASK);
@@ -107,4 +116,9 @@ void com_receive_wifi_ctrl_blocking(esp_routable_packet_t * packet) {
 
 void com_receive_system_blocking(esp_routable_packet_t * packet) {
   xQueueReceive(espSystemQueue, packet, (TickType_t) portMAX_DELAY);
+}
+
+void com_receive_image_blocking(esp_routable_packet_t * packet) {
+  // ESP_LOGI("COM", "Receive blocking reached");
+  xQueueReceive(espImageQueue, packet, (TickType_t) portMAX_DELAY);
 }

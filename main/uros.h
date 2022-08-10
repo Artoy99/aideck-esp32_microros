@@ -16,6 +16,9 @@
 
 #include <rmw_microros/rmw_microros.h>
 
+#include "com.h"
+#include "esp_transport.h"
+
 #include <sensor_msgs/msg/image.h>
 #define CAMERA_WIDTH 324
 #define CAMERA_HEIGHT 244
@@ -34,6 +37,8 @@ std_msgs__msg__Int32 recv_msg;
 
 rcl_publisher_t img_publisher;
 sensor_msgs__msg__Image send_img;
+
+esp_routable_packet_t packet;
 
 void uros_init();
 void timer_callback(rcl_timer_t * timer, int64_t last_call_time);
