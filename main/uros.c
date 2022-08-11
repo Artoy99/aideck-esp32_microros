@@ -18,17 +18,22 @@ void subscription_callback(const void * msgin)
     if(msg->data)
     {
         // Send connection info to GAP8
-        // const CPXRoutingPacked_t* packed;
+        esp_routable_packet_t connection;
 
-        // CPXRouting_t* route;
-        // route->source = CPX_T_ESP32;
-        // route->destination = CPX_T_GAP8;
-        // route->function = CPX_F_WIFI_CTRL;
-        // route->lastPacket = false;
-
-        // cpxPackedToRoute(packed, route)
+        cpxInitRoute(CPX_T_ESP32, CPX_T_GAP8, CPX_F_WIFI_CTRL, &connection.route);
+        connection.data[0] = 0x32; // WIFI_CTRL_STATUS_CLIENT_CONNECTED;
+        connection.data[1] = 1;    // connected
+        connection.dataLength = 2;
+        espAppSendToRouterBlocking(&connection);
     }else{
-        // Send deconnection info to GAP8
+        // Send deconnection info to GAP8, not working
+        esp_routable_packet_t connection;
+
+        cpxInitRoute(CPX_T_ESP32, CPX_T_GAP8, CPX_F_WIFI_CTRL, &connection.route);
+        connection.data[0] = 0x32; // WIFI_CTRL_STATUS_CLIENT_CONNECTED;
+        connection.data[1] = 0;    // disconnected
+        connection.dataLength = 2;
+        espAppSendToRouterBlocking(&connection);
     }
 }
 

@@ -18,6 +18,7 @@
 
 #include "com.h"
 #include "esp_transport.h"
+#include "wifi.h"
 
 #include <sensor_msgs/msg/image.h>
 #define CAMERA_WIDTH 324
