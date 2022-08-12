@@ -39,7 +39,8 @@ void subscription_callback(const void * msgin)
 
 void micro_ros_task(void * arg)
 {
-    // ESP_LOGI("ROS", "uROS task started");
+    ESP_LOGI("ROS", "MAIN task started");
+
 	rcl_allocator_t allocator = rcl_get_default_allocator();
 	rclc_support_t support;
     // ESP_LOGI("ROS", "uROS checkpoint 0");
@@ -116,10 +117,16 @@ void micro_ros_task(void * arg)
     send_img.width = CAMERA_WIDTH;
     send_img.height = CAMERA_HEIGHT;
     send_img.is_bigendian = CAMERA_IS_BIGENDIAN;
-    send_img.encoding.data = "rgb8";
-    uint32_t matrix_size = send_img.step * send_img.height;
-    uint8_t data_image [matrix_size];
-    send_img.data.data = data_image;
+    send_img.encoding.data = "jpeg";
+    send_img.data.capacity = CAMERA_IMAGE_SIZE;
+    // send_img.data.data = (uint8_t*) malloc(CAMERA_IMAGE_SIZE*sizeof(uint8_t));
+    send_img.data.size = 0;
+    // uint64_t matrix_size = CAMERA_IMAGE_SIZE// send_img.step * send_img.height;
+    // uint8_t data_image [CAMERA_IMAGE_SIZE];
+    // ESP_LOGI("ROS", "img data size: %d", sizeof(send_img.data.data));
+    // ESP_LOGI("ROS", "data size: %d", sizeof(data_image));
+    // memcpy(&send_img.data.data, &data_image, CAMERA_IMAGE_SIZE);
+    // send_img.data.data = data_image;
 
     RCSOFTCHECK(rcl_publish(&img_publisher, &send_img, NULL));
 
@@ -133,16 +140,49 @@ void micro_ros_task(void * arg)
     RCCHECK(rcl_subscription_fini(&subscriber, &node));
 	RCCHECK(rcl_node_fini(&node));
 
+    free(send_img.data.data);
+
   	vTaskDelete(NULL);
 }
 
 void micro_image_task()
 {
+    ESP_LOGI("ROS", "IMAGE task started");
+    // static uint8_t data_image [CAMERA_IMAGE_SIZE];
+    static uint32_t count = 0;
+    // ESP_LOGI("ROS", "image task variable created");
     while(1)
     {
-        vTaskDelay(100);
         com_receive_image_blocking(&packet);
-        ESP_LOGI("ROS", "%d", packet.data[0]);
+        // Image header from python script: bytearray(b'\xbcD\x01\xf4\x00\x01\x00\xd04\x01\x00')
+        // Magic: 0xBC
+        // Width: 324
+        // Height: 244
+        // Depth: 1
+        // Format: 0
+        // Size: 79056
+        if(packet.data[0] == 0xbc){
+            ESP_LOGI("ROS", "magic is good");
+            // ESP_LOGI("ROS", "data lenght: %d", packet.dataLength);
+            ESP_LOGI("ROS", "count: %d", count);
+            // ESP_LOGI("ROS", "img data size: %d", sizeof(send_img.data.data));
+            // ESP_LOGI("ROS", "data size: %d", sizeof(data_image));
+            
+            // send_img.data.data = data_image;
+            
+            count = 0;
+
+            // RCSOFTCHECK(rcl_publish(&img_publisher, &send_img, NULL));
+        }else{
+            ESP_LOGI("ROS", "data lenght: %d", packet.dataLength);
+            
+            // for(int i = 0; i < packet.dataLength; i++){
+            //     data_image[(count*1020)+i] = packet.data[i];
+            // }
+            count++;
+        }
+        // ESP_LOGI("ROS", "%d", packet.data[0]);
+        vTaskDelay(1);
     }
 }
 
@@ -164,5 +204,5 @@ void uros_init()
         NULL
     );
 
-    ESP_LOGI("ROS", "Task created");
+    ESP_LOGI("ROS", "Tasks created");
 }

@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 
 #include "freertos/FreeRTOS.h"
@@ -24,6 +25,7 @@
 #define CAMERA_WIDTH 324
 #define CAMERA_HEIGHT 244
 #define CAMERA_IS_BIGENDIAN 0
+#define CAMERA_IMAGE_SIZE 79056
 
 #define CONFIG_MICRO_ROS_APP_STACK 10000
 #define CONFIG_MICRO_ROS_APP_TASK_PRIO 5

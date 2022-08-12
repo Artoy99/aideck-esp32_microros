@@ -115,6 +115,7 @@ static void route(Receiver_t receive, CPXRoutablePacket_t* rxp, RouteContext_t* 
         ESP_LOGD("ROUTER", "%s [0x%02X] -> HOST [0x%02X] (%u)", routerName, source, destination, cpxDataLength);
         if(source == CPX_T_GAP8)
         {
+          // splitAndSend(rxp, context, wifi_transport_send, WIFI_TRANSPORT_MTU - CPX_ROUTING_PACKED_SIZE);
           splitAndSend(rxp, context, espTransportSend, ESP_TRANSPORT_MTU - CPX_ROUTING_PACKED_SIZE);
           // ESP_LOGI("ROUTER", "New data to computer");
         }else{
