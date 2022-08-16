@@ -10,6 +10,15 @@ void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
 	}
 }
 
+void image_timer_callback(rcl_timer_t * timer, int64_t last_call_time)
+{
+	RCLC_UNUSED(last_call_time);
+	if (timer != NULL) {
+		RCSOFTCHECK(rcl_publish(&img_publisher, &send_img, NULL));
+        send_img.header.stamp.sec++;
+	}
+}
+
 void subscription_callback(const void * msgin)
 {
 	const std_msgs__msg__Int32 * msg = (const std_msgs__msg__Int32 *)msgin;
@@ -102,12 +111,23 @@ void micro_ros_task(void * arg)
 		RCL_MS_TO_NS(timer_timeout),
 		timer_callback)
     );
+
+    // create image timer,
+	rcl_timer_t image_timer;
+	const unsigned int image_timer_timeout = 1000;
+	RCCHECK(rclc_timer_init_default(
+		&image_timer,
+		&support,
+		RCL_MS_TO_NS(image_timer_timeout),
+		image_timer_callback)
+    );
     // ESP_LOGI("ROS", "uROS checkpoint 5");
 
 	// create executor
 	rclc_executor_t executor;
-	RCCHECK(rclc_executor_init(&executor, &support.context, 2, &allocator));
+	RCCHECK(rclc_executor_init(&executor, &support.context, 3, &allocator));
 	RCCHECK(rclc_executor_add_timer(&executor, &timer));
+    RCCHECK(rclc_executor_add_timer(&executor, &image_timer));
     RCCHECK(rclc_executor_add_subscription(&executor, &subscriber, &recv_msg, &subscription_callback, ON_NEW_DATA));
     // ESP_LOGI("ROS", "uROS checkpoint 6");
 
