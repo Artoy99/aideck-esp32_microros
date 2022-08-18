@@ -1,5 +1,7 @@
 #include "uros.h"
 
+bool image_ready_flag = false;
+
 void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
 {
 	RCLC_UNUSED(last_call_time);
@@ -13,9 +15,10 @@ void timer_callback(rcl_timer_t * timer, int64_t last_call_time)
 void image_timer_callback(rcl_timer_t * timer, int64_t last_call_time)
 {
 	RCLC_UNUSED(last_call_time);
-	if (timer != NULL) {
+	if (timer != NULL && image_ready_flag) {
 		RCSOFTCHECK(rcl_publish(&img_publisher, &send_img, NULL));
-        send_img.header.stamp.sec++;
+        image_ready_flag = false;
+        // send_img.header.stamp.sec++;
 	}
 }
 
@@ -55,7 +58,7 @@ void micro_ros_task(void * arg)
     // ESP_LOGI("ROS", "uROS checkpoint 0");
 
     vTaskDelay(1000);
-    
+
 	rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
 	RCCHECK(rcl_init_options_init(&init_options, allocator));
     // ESP_LOGI("ROS", "uROS checkpoint 1");
@@ -114,7 +117,7 @@ void micro_ros_task(void * arg)
 
     // create image timer,
 	rcl_timer_t image_timer;
-	const unsigned int image_timer_timeout = 1000;
+	const unsigned int image_timer_timeout = 500;
 	RCCHECK(rclc_timer_init_default(
 		&image_timer,
 		&support,
@@ -134,13 +137,6 @@ void micro_ros_task(void * arg)
 	send_msg.data = 0;
     // ESP_LOGI("ROS", "uROS checkpoint 7");
 
-    send_img.width = CAMERA_WIDTH;
-    send_img.height = CAMERA_HEIGHT;
-    send_img.is_bigendian = CAMERA_IS_BIGENDIAN;
-    send_img.encoding.data = "jpeg";
-    send_img.data.capacity = CAMERA_IMAGE_SIZE;
-    // send_img.data.data = (uint8_t*) malloc(CAMERA_IMAGE_SIZE*sizeof(uint8_t));
-    send_img.data.size = 0;
     // uint64_t matrix_size = CAMERA_IMAGE_SIZE// send_img.step * send_img.height;
     // uint8_t data_image [CAMERA_IMAGE_SIZE];
     // ESP_LOGI("ROS", "img data size: %d", sizeof(send_img.data.data));
@@ -148,7 +144,7 @@ void micro_ros_task(void * arg)
     // memcpy(&send_img.data.data, &data_image, CAMERA_IMAGE_SIZE);
     // send_img.data.data = data_image;
 
-    RCSOFTCHECK(rcl_publish(&img_publisher, &send_img, NULL));
+    // RCSOFTCHECK(rcl_publish(&img_publisher, &send_img, NULL));
 
 	while(1){
 		rclc_executor_spin_some(&executor, RCL_MS_TO_NS(100));
@@ -160,7 +156,7 @@ void micro_ros_task(void * arg)
     RCCHECK(rcl_subscription_fini(&subscriber, &node));
 	RCCHECK(rcl_node_fini(&node));
 
-    free(send_img.data.data);
+    // free(send_img.data.data);
 
   	vTaskDelete(NULL);
 }
@@ -168,9 +164,31 @@ void micro_ros_task(void * arg)
 void micro_image_task()
 {
     ESP_LOGI("ROS", "IMAGE task started");
-    // static uint8_t data_image [CAMERA_IMAGE_SIZE];
+    static uint8_t data_image[CAMERA_IMAGE_SIZE];
     static uint32_t count = 0;
-    // ESP_LOGI("ROS", "image task variable created");
+    static uint32_t byte_number = 0;
+    // static uint8_t fake_image_data [5]= {0, 0, 0, 0, 0};
+    // static uint8_t fake_image_data [1][5]= {{0, 0, 0, 0, 0}};
+    // static uint8_t fake_image_data [5][5] = {{0, 0, 0, 0, 0},
+    //                                             {1, 1, 1, 1, 1},
+    //                                             {2, 2, 2, 2, 2},
+    //                                             {3, 3, 3, 3, 3},
+    //                                             {4, 4, 4, 4, 4}};
+
+    // com_receive_image_blocking(&packet);
+    // *packet.data = {0};
+    // *data_image = packet.data;
+
+    send_img.width = CAMERA_WIDTH;
+    send_img.height = CAMERA_HEIGHT;
+    send_img.is_bigendian = CAMERA_IS_BIGENDIAN;
+    send_img.encoding.data = "jpeg";
+    send_img.data.capacity = CAMERA_IMAGE_SIZE;
+    // send_img.data.data = data_image;
+    send_img.data.data = (uint8_t*) malloc(send_img.data.capacity*sizeof(uint8_t));
+    send_img.data.size = 0;
+
+    ESP_LOGI("ROS", "IMAGE task variable created");
     while(1)
     {
         com_receive_image_blocking(&packet);
@@ -180,29 +198,75 @@ void micro_image_task()
         // Height: 244
         // Depth: 1
         // Format: 0
-        // Size: 79056
-        if(packet.data[0] == 0xbc){
-            ESP_LOGI("ROS", "magic is good");
-            // ESP_LOGI("ROS", "data lenght: %d", packet.dataLength);
-            ESP_LOGI("ROS", "count: %d", count);
-            // ESP_LOGI("ROS", "img data size: %d", sizeof(send_img.data.data));
-            // ESP_LOGI("ROS", "data size: %d", sizeof(data_image));
-            
-            // send_img.data.data = data_image;
-            
-            count = 0;
+        // Size: 79056(RAW image)
 
-            // RCSOFTCHECK(rcl_publish(&img_publisher, &send_img, NULL));
+        if(packet.data[0] == 0xbc){
+            ESP_LOGI("ROS", "HEADER");
+
+            // Header, ignoring
+
+            /*// ESP_LOGI("ROS", "data[0]: %d", packet.data[0]);
+
+            // Send message
+            send_img.data.size = byte_number;
+            // send_img.data.data = *data_image;
+            image_ready_flag = true;
+
+            // Reset counter
+            count = 0;
+            byte_number = 0;*/
+        }else if(packet.dataLength == 2){
+            ESP_LOGI("ROS", "END OF IMAGE");
+
+            // End of image, send message
+            send_img.data.size = byte_number;
+            // send_img.data.data = *data_image;
+            // memcpy(&send_img.data.data, &data_image, byte_number*sizeof(uint8_t));
+            // send_img.data.data[0] += 1;
+
+            image_ready_flag = true;
+
+            // Reset counter
+            count = 0;
+            byte_number = 0;
+        }else if(packet.dataLength != 1020){
+                ESP_LOGI("ROS", "FOOTER");
+                // ESP_LOGI("ROS", "data[0]: %d", packet.data[0]);
+
+                // Footer, ignoring
         }else{
+                ESP_LOGI("ROS", "CHUNK");
+                // ESP_LOGI("ROS", "data lenght: %d", packet.dataLength);
+
+                // Adding a chunk of data to the total data
+                *data_image = packet.data;
+                // memcpy(packet.data, &data_image, packet.dataLength*sizeof(uint8_t));
+                send_img.data.data = *data_image;
+                
+                // Update the length of the data packet, the count of chunks
+                count++;
+                byte_number += packet.dataLength;
+
+
+            /*ESP_LOGI("ROS", "CHUNK");
             ESP_LOGI("ROS", "data lenght: %d", packet.dataLength);
-            
+        
             // for(int i = 0; i < packet.dataLength; i++){
-            //     data_image[(count*1020)+i] = packet.data[i];
+                
+            //     // send_img.data.data[(count*1020)+i] = packet.data[i];
+            //     // data_image[(count*1020)+i] = packet.data[i];
             // }
+
+            // Adding a chunk of data to the total data
+            *data_image = packet.data;
+            send_img.data.data = *data_image;
+            
+            // Update the length of the data packet, the count of chunks
             count++;
+            byte_number += packet.dataLength;*/
         }
         // ESP_LOGI("ROS", "%d", packet.data[0]);
-        vTaskDelay(1);
+        vTaskDelay(2);
     }
 }
 
