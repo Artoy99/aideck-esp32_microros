@@ -61,7 +61,7 @@ void micro_ros_task(void * arg)
 	rcl_allocator_t allocator = rcl_get_default_allocator();
 	rclc_support_t support;
 
-    vTaskDelay(1000); // Wait for wifi to get connection with agent, need to be modify
+    vTaskDelay(2000); // Wait for wifi to get connection with agent, need to be modify
 
 	rcl_init_options_t init_options = rcl_get_zero_initialized_init_options();
 	RCCHECK(rcl_init_options_init(&init_options, allocator));
@@ -151,10 +151,10 @@ void micro_ros_task(void * arg)
 	}
 
 	// free resources
-	RCCHECK(rcl_publisher_fini(&publisher, &node));
-    RCCHECK(rcl_publisher_fini(&img_publisher, &node));
+	// RCCHECK(rcl_publisher_fini(&publisher, &node));
+    // RCCHECK(rcl_publisher_fini(&img_publisher, &node));
     RCCHECK(rcl_publisher_fini(&compressed_img_publisher, &node));
-    RCCHECK(rcl_subscription_fini(&subscriber, &node));
+    // RCCHECK(rcl_subscription_fini(&subscriber, &node));
 	RCCHECK(rcl_timer_fini(&image_timer));
     // RCCHECK(rcl_timer_fini(&timer));
     RCCHECK(rcl_node_fini(&node));
@@ -203,8 +203,11 @@ void micro_image_task()
 
         if(packet.data[0] == 0xbc && packet.dataLength == 11){
             // Ignoring gap8 header
+            img_header_t *head;
+            head = packet.data;
+            ESP_LOGI("ROS", "HEADER, size of image: %d", head->size);
         }else if(packet.dataLength == 2){
-            memcpy(&send_compressed_img.data.data[0+byte_number], packet.data, packet.dataLength);
+            memcpy(&send_compressed_img.data.data[byte_number], packet.data, packet.dataLength);
             count++;
             byte_number += packet.dataLength;
 
@@ -225,8 +228,8 @@ void micro_image_task()
             // ESP_LOGI("ROS", "PART, adding to msg");
 
             // Adding to the message, offset the part
-            // memcpy(&send_img.data.data[0+byte_number], packet.data, packet.dataLength);
-            memcpy(&send_compressed_img.data.data[0+byte_number], packet.data, packet.dataLength);
+            // memcpy(&send_img.data.data[byte_number], packet.data, packet.dataLength);
+            memcpy(&send_compressed_img.data.data[byte_number], packet.data, packet.dataLength);
 
             // Update the length of the data packet, the count of chunks
             count++;

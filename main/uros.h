@@ -28,8 +28,8 @@
 #define CAMERA_WIDTH 324
 #define CAMERA_HEIGHT 244
 #define CAMERA_IS_BIGENDIAN 0
-#define CAMERA_IMAGE_SIZE 79056
-// #define CAMERA_IMAGE_SIZE 8000
+// #define CAMERA_IMAGE_SIZE 79056
+#define CAMERA_IMAGE_SIZE 8000
 
 #define CONFIG_MICRO_ROS_APP_STACK 10000
 // #define CONFIG_MICRO_ROS_APP_STACK 90000
@@ -52,6 +52,16 @@ rcl_publisher_t compressed_img_publisher;
 sensor_msgs__msg__CompressedImage send_compressed_img;
 
 esp_routable_packet_t packet;
+
+typedef struct
+{
+  uint8_t magic;
+  uint16_t width;
+  uint16_t height;
+  uint8_t depth;
+  uint8_t type;
+  uint32_t size;
+} __attribute__((packed)) img_header_t;
 
 void uros_init();
 void timer_callback(rcl_timer_t * timer, int64_t last_call_time);
