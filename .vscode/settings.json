@@ -8,6 +8,9 @@
         "freertos.h": "c",
         "image.h": "c",
         "image__type_support.h": "c",
-        "image__struct.h": "c"
+        "image__struct.h": "c",
+        "*.tcc": "c",
+        "iomanip": "c",
+        "*.ipp": "c"
     }
 }

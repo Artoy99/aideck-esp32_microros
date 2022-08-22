@@ -24,12 +24,15 @@
 #include "wifi.h"
 
 #include <sensor_msgs/msg/image.h>
+#include <sensor_msgs/msg/compressed_image.h>
 #define CAMERA_WIDTH 324
 #define CAMERA_HEIGHT 244
 #define CAMERA_IS_BIGENDIAN 0
 #define CAMERA_IMAGE_SIZE 79056
+// #define CAMERA_IMAGE_SIZE 8000
 
 #define CONFIG_MICRO_ROS_APP_STACK 10000
+// #define CONFIG_MICRO_ROS_APP_STACK 90000
 #define CONFIG_MICRO_ROS_APP_TASK_PRIO 5
 
 #define RCCHECK(fn) { rcl_ret_t temp_rc = fn; if((temp_rc != RCL_RET_OK)){printf("Failed status on line %d: %d. Aborting.\n",__LINE__,(int)temp_rc);vTaskDelete(NULL);}}
@@ -45,6 +48,8 @@ std_msgs__msg__Int32 recv_msg;
 
 rcl_publisher_t img_publisher;
 sensor_msgs__msg__Image send_img;
+rcl_publisher_t compressed_img_publisher;
+sensor_msgs__msg__CompressedImage send_compressed_img;
 
 esp_routable_packet_t packet;
 
